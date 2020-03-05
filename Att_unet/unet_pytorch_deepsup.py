@@ -1,10 +1,39 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils.newdataloader import  *
-from models.GridAttention2D import  GridAttention2D
+from GridAttention2D import  GridAttention2D
 import torch
 import torch.nn as nn
+
+
+class Attention_block(nn.Module):
+    def __init__(self,F_g,F_l,F_int):
+        super(Attention_block,self).__init__()
+        self.W_g = nn.Sequential(
+            nn.Conv2d(F_g, F_int, kernel_size=1,stride=1,padding=0,bias=True),
+            nn.BatchNorm2d(F_int)
+            )
+        
+        self.W_x = nn.Sequential(
+            nn.Conv2d(F_l, F_int, kernel_size=1,stride=1,padding=0,bias=True),
+            nn.BatchNorm2d(F_int)
+        )
+
+        self.psi = nn.Sequential(
+            nn.Conv2d(F_int, 1, kernel_size=1,stride=1,padding=0,bias=True),
+            nn.BatchNorm2d(1),
+            nn.Sigmoid()
+        )
+        
+        self.relu = nn.ReLU(inplace=True)
+        
+    def forward(self,g,x):
+        g1 = self.W_g(g)
+        x1 = self.W_x(x)
+        psi = self.relu(g1+x1)
+        psi = self.psi(psi)
+
+        return x*psi
 
 def conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True, batchnorm=False):
     nonlinearity = nn.LeakyReLU(inplace=True)
@@ -308,7 +337,7 @@ class AttUnet(nn.Module):
 
         return final
 if __name__ == '__main__':
-    model = RUNet_Pytorch_DeepSup(n_input_channels=3,n_classes=1)
+    model = AttUnet(n_input_channels=3,n_classes=1)
     inpt = torch.rand((1,3,384,384))
     out = model(inpt)
     print(out.size())
